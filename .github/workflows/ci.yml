@@ -1,0 +1,138 @@
+# ============================================================
+# OpenForge — ci.yml
+#
+# Triggers on every pull request to main.
+# Checks all .py files are valid Python syntax.
+# If all checks pass → auto-merges the PR.
+# If any check fails → closes the PR with a comment.
+# ============================================================
+
+name: CI — Validate and auto-merge upload PRs
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate:
+    name: Validate uploaded modules
+    runs-on: ubuntu-latest
+
+    # Only run on PRs whose branch starts with "upload/"
+    # (manual PRs from contributors are not auto-merged)
+    if: startsWith(github.head_ref, 'upload/')
+
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          token: ${{ secrets.PAT_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Check Python syntax on all uploaded .py files
+        id: syntax_check
+        run: |
+          FAILED=0
+          ERRORS=""
+
+          # Find all .py files changed in this PR
+          git fetch origin main
+          FILES=$(git diff --name-only origin/main...HEAD -- '*.py')
+
+          if [ -z "$FILES" ]; then
+            echo "No .py files found in this PR."
+            exit 0
+          fi
+
+          for FILE in $FILES; do
+            echo "Checking: $FILE"
+            OUTPUT=$(python -c "
+          import ast, sys
+          try:
+              ast.parse(open('$FILE').read())
+              print('OK')
+          except SyntaxError as e:
+              print(f'SYNTAX ERROR at line {e.lineno}: {e.msg}')
+              sys.exit(1)
+          " 2>&1)
+
+            if [ $? -ne 0 ]; then
+              FAILED=1
+              ERRORS="$ERRORS\n- \`$FILE\`: $OUTPUT"
+            fi
+          done
+
+          if [ $FAILED -ne 0 ]; then
+            echo "syntax_errors<<EOF" >> $GITHUB_OUTPUT
+            echo -e "$ERRORS" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+      - name: Check for dangerous imports (second pass)
+        id: import_check
+        run: |
+          FAILED=0
+          ERRORS=""
+
+          git fetch origin main
+          FILES=$(git diff --name-only origin/main...HEAD -- '*.py')
+
+          DANGEROUS="os.system subprocess.run subprocess.Popen eval( exec( pickle.loads marshal.loads ctypes __import__("
+
+          for FILE in $FILES; do
+            for PATTERN in $DANGEROUS; do
+              if grep -qF "$PATTERN" "$FILE" 2>/dev/null; then
+                FAILED=1
+                ERRORS="$ERRORS\n- \`$FILE\`: contains \`$PATTERN\`"
+              fi
+            done
+          done
+
+          if [ $FAILED -ne 0 ]; then
+            echo "import_errors<<EOF" >> $GITHUB_OUTPUT
+            echo -e "$ERRORS" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+      # ── All checks passed → auto-merge ──────────────────────
+      - name: Auto-merge PR
+        if: success()
+        env:
+          GH_TOKEN: ${{ secrets.PAT_TOKEN }}
+        run: |
+          gh pr merge ${{ github.event.pull_request.number }} \
+            --squash \
+            --delete-branch \
+            --subject "Auto-merge: ${{ github.event.pull_request.title }}"
+
+      # ── Any check failed → close PR with explanation ────────
+      - name: Close PR on failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.PAT_TOKEN }}
+        run: |
+          COMMENT="## ❌ Automated checks failed
+
+          This pull request was automatically closed because the uploaded module did not pass validation.
+
+          **Syntax errors:**
+          ${{ steps.syntax_check.outputs.syntax_errors || 'None' }}
+
+          **Dangerous pattern errors:**
+          ${{ steps.import_check.outputs.import_errors || 'None' }}
+
+          Please fix the issues and upload again through the OpenForge website."
+
+          gh pr comment ${{ github.event.pull_request.number }} --body "$COMMENT"
+          gh pr close ${{ github.event.pull_request.number }} --delete-branch

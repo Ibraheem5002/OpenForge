@@ -1,0 +1,106 @@
+# ============================================================
+# OpenForge — auto-version.yml
+#
+# Triggers when a PR is merged into main.
+# Only runs for upload/* branches (user uploads).
+# Bumps the version in pyproject.toml using date-stamp format:
+#   0.YYYYMMDD.N  (N increments if multiple merges on same day)
+# Commits the bump, then creates a GitHub Release,
+# which triggers publish.yml → PyPI.
+# ============================================================
+
+name: Auto-version and release on upload merge
+
+on:
+  pull_request:
+    branches: [main]
+    types: [closed]
+
+jobs:
+  version-and-release:
+    name: Bump version and create release
+    runs-on: ubuntu-latest
+
+    # Only run when an upload/* PR is actually merged (not just closed)
+    if: |
+      github.event.pull_request.merged == true &&
+      startsWith(github.event.pull_request.head.ref, 'upload/')
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.PAT_TOKEN }}
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Bump version in pyproject.toml
+        id: bump
+        run: |
+          python - << 'PYEOF'
+          import re
+          from datetime import datetime
+
+          # Read current pyproject.toml
+          with open("pyproject.toml", "r") as f:
+              content = f.read()
+
+          # Extract current version
+          match = re.search(r'version\s*=\s*"([^"]+)"', content)
+          current = match.group(1) if match else "0.0.0"
+
+          # Build new date-stamp version: 0.YYYYMMDD.N
+          today = datetime.utcnow().strftime("%Y%m%d")
+          base  = f"0.{today}"
+
+          # If current version already starts with today's base, increment N
+          if current.startswith(base + "."):
+              n = int(current.split(".")[-1]) + 1
+          else:
+              n = 0
+
+          new_version = f"{base}.{n}"
+
+          # Write back
+          new_content = re.sub(
+              r'(version\s*=\s*")[^"]+(")',
+              f'\\g<1>{new_version}\\g<2>',
+              content
+          )
+
+          with open("pyproject.toml", "w") as f:
+              f.write(new_content)
+
+          # Write to GitHub output
+          with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+              f.write(f"new_version={new_version}\n")
+
+          print(f"Version bumped: {current} → {new_version}")
+          PYEOF
+
+        env:
+          GITHUB_OUTPUT: ${{ env.GITHUB_OUTPUT }}
+
+      - name: Commit version bump
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add pyproject.toml
+          git commit -m "chore: bump version to ${{ steps.bump.outputs.new_version }}"
+          git push
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.PAT_TOKEN }}
+        run: |
+          gh release create "v${{ steps.bump.outputs.new_version }}" \
+            --title "v${{ steps.bump.outputs.new_version }}" \
+            --notes "Automated release — new module added via OpenForge upload system.\n\nPR: ${{ github.event.pull_request.html_url }}" \
+            --target main
