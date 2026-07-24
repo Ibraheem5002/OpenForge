@@ -1,2 +1,2 @@
-def test_func(x):
-    print(f"test_func working as it should : {x}")
+def test_func1(x):
+    print(f"Changes have been made successfully: {x}")
