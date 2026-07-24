@@ -4,18 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "openforge"
-version = "0.20260724.0"
-dependencies = []
-[project.optional-dependencies]
-ml = [
-    "torch>=2.0.0",
-    "numpy>=1.22.0"
-]
-dev = [
-    "pytest",
-    "black"
-]
-
+version = "0.20250000.0"
 authors = [
   { name="Muhammad Ibrahim", email="muhammad.ibraheem.5002@gmail.com" },
 ]
@@ -28,6 +17,16 @@ classifiers = [
     "Operating System :: OS Independent",
     "Intended Audience :: Developers",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+[project.optional-dependencies]
+ml = [
+    "torch>=2.0.0",
+    "numpy>=1.22.0"
+]
+dev = [
+    "pytest",
+    "black"
 ]
 
 [tool.setuptools.packages.find]
