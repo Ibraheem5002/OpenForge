@@ -24,7 +24,8 @@ jobs:
     # Only run when an upload/* PR is actually merged (not just closed)
     if: |
       github.event.pull_request.merged == true &&
-      startsWith(github.event.pull_request.head.ref, 'upload/')
+      (startsWith(github.event.pull_request.head.ref, 'upload/') ||
+       startsWith(github.event.pull_request.head.ref, 'delete/'))
 
     permissions:
       contents: write
