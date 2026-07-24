@@ -96,3 +96,24 @@ jobs:
         run: |
           gh pr comment ${{ github.event.pull_request.number }} --body "Automated checks failed. Syntax errors: ${{ steps.validate.outputs.syntax_errors }} Dangerous patterns: ${{ steps.validate.outputs.import_errors }}"
           gh pr close ${{ github.event.pull_request.number }} --delete-branch
+  
+  auto-merge-delete:
+    name: Auto-merge delete PRs
+    runs-on: ubuntu-latest
+
+    if: startsWith(github.head_ref, 'delete/')
+
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Auto-merge delete PR
+        env:
+          GH_TOKEN: ${{ secrets.PAT_TOKEN }}
+        run: |
+          gh pr merge ${{ github.event.pull_request.number }} \
+            --squash \
+            --delete-branch \
+            --subject "Auto-merge: ${{ github.event.pull_request.title }}" \
+            --repo ${{ github.repository }}
