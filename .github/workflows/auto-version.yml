@@ -45,7 +45,7 @@ jobs:
         id: bump
         run: |
           python - << 'PYEOF'
-          import re
+          import re, os
           from datetime import datetime
 
           # Read current pyproject.toml
