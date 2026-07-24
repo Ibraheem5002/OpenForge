@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "openforge"
-version = "0.20260724.3"
+version = "0.20260724.4"
 authors = [
   { name="Muhammad Ibrahim", email="muhammad.ibraheem.5002@gmail.com" },
 ]
