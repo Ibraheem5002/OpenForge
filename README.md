@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/logo.png" width="120" alt="OpenForge logo" />
+</p>
+
 # OpenForge
 
 **A community library of reinvented ML modules and algorithms — built from scratch, by developers.**
