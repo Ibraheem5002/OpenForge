@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/logo2.png" width="120" alt="OpenForge logo" />
+  <img src="assets/logo1.png" width="120" alt="OpenForge logo" />
 </p>
 
 # OpenForge
