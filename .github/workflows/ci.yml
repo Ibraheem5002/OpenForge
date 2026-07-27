@@ -92,13 +92,12 @@ jobs:
       - name: Update module status to merged
         if: steps.validate.outputs.passed == 'true'
         run: |
-          PR_TITLE="${{ github.event.pull_request.title }}"
           PR_URL="${{ github.event.pull_request.html_url }}"
-
+          ENCODED_URL=$(python3 -c "import urllib.parse; print(urllib.parse.quote('${PR_URL}', safe=''))")
           curl -s -X PATCH \
-            "https://njrmizljaqsiuxhlrfia.supabase.co/rest/v1/models?pr_url=eq.${PR_URL}" \
-            -H "apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5qcm1pemxqYXFzaXV4aGxyZmlhIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MjQwMjQwMywiZXhwIjoyMDk3OTc4NDAzfQ.${{ secrets.SUPABASE_SERVICE_KEY }}" \
-            -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5qcm1pemxqYXFzaXV4aGxyZmlhIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MjQwMjQwMywiZXhwIjoyMDk3OTc4NDAzfQ.${{ secrets.SUPABASE_SERVICE_KEY }}" \
+            "https://njrmizljaqsiuxhlrfia.supabase.co/rest/v1/models?pr_url=eq.${ENCODED_URL}" \
+            -H "apikey: ${{ secrets.SUPABASE_SERVICE_KEY }}" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_KEY }}" \
             -H "Content-Type: application/json" \
             -d '{"pr_status": "merged"}'
 
