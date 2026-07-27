@@ -135,4 +135,4 @@ MIT — do whatever you want with it.
 
 ---
 
-*Built by Muhammad Ibrahim. Contributions welcome via the [OpenForge portal](https://openforge.vercel.app).*
+*Built by Muhammad Ibrahim. Contributions welcome via the [OpenForge portal](https://openforge-web.vercel.app/).*
